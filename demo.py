@@ -2,130 +2,154 @@
 수치 데이터를 어떻게 넣을 것인가 고민
 1.수치는 비교하기 쉬운만큼 학생의 추이를 보는데 적극적으로 사용하자
 2.수치들을 미리 계산한 추이를 전달하여 llm은 학생의 태도, 이해도 등에 대한 변화에 주목하게 하자.
+
+수업보완:관리교사 코멘트, 수치 정보에서 부족한점을 찾도록
+수업태도:점수 기반
+전체수업:수업내용 + 점수 추이,변화
+
 """
 
-data = [
-    {
-        "student_id": "1023",
-        "date": "2025-08-07",
-        "course": "[1기] 문항로 강사 온라인 멘토링 (수학)",
-        "duration_min": "60분",
-        "attendance": "출석",
-        "attitude_score": "4",
-        "understanding_score": "3",
-        "homework_score": "5",
-        "qna_difficulty_score": "4",
-        "topics": "피타고라스 정리 복습, 삼각형의 내심, 삼각형의 외심.",
-        "absence_reason": "",
-        "manager_comment": "오늘 수업에서 피타고라스 정리 문제풀이에 적극적으로 참여하였으나, 삼각형 외심 성질 문제에서 개념 적용에 어려움을 보임. 문제풀이 시 풀이 과정을 명확히 설명하도록 지도 필요. 피타고라스 응용은 안정적. 외심 성질 적용 과정에서 보조선 설정에 반복 어려움.",
-    },
-    {
-        "student_id": "1023",
-        "date": "2025-08-07",
-        "course": "[1기] 문항로 강사 온라인 멘토링 (수학)",
-        "duration_min": "60분",
-        "attendance": "출석",
-        "attitude_score": "4",
-        "understanding_score": "3",
-        "homework_score": "5",
-        "qna_difficulty_score": "4",
-        "topics": "피타고라스 정리 복습, 삼각형의 내심, 삼각형의 외심",
-        "notes": "피타고라스 응용은 안정적. 외심 성질 적용 과정에서 보조선 설정에 반복 어려움.",
-        "absence_reason": "-",
-        "manager_comment": "오늘 수업에서 피타고라스 정리 문제풀이에 적극적으로 참여하였으나, 삼각형 외심 성질 문제에서 개념 적용에 어려움을 보임. 문제풀이 시 풀이 과정을 명확히 설명하도록 지도 필요.",
-        "attachments": "중1_18회차.png",
-    },
-    {
-        "student_id": "1023",
-        "date": "2025-08-05",
-        "course": "[1기] 문항로 강사 온라인 멘토링 (수학)",
-        "duration_min": "60분",
-        "attendance": "출석",
-        "attitude_score": "5",
-        "understanding_score": "4",
-        "homework_score": "5",
-        "qna_difficulty_score": "4",
-        "topics": "피타고라스 정리 기본, 직각삼각형 성질",
-        "notes": "수업 내내 적극적으로 발언하며 문제 해결 과정에서 창의적인 접근을 시도함.",
-        "absence_reason": "-",
-        "manager_comment": "오늘은 높은 집중력을 보여주었고, 과제 수행도 완벽했습니다. 특히 문제 풀이 과정 설명이 명확하고 논리적이었음.",
-        "attachments": "중1_17회차.png",
-    },
-    {
-        "student_id": "1023",
-        "date": "2025-08-02",
-        "course": "[1기] 문항로 강사 온라인 멘토링 (수학)",
-        "duration_min": "60분",
-        "attendance": "출석",
-        "attitude_score": "3",
-        "understanding_score": "3",
-        "homework_score": "4",
-        "qna_difficulty_score": "3",
-        "topics": "삼각형의 외심, 보조선 그리기",
-        "notes": "수업 초반에는 집중했으나, 후반부에는 피로로 인한 집중 저하가 있었음.",
-        "absence_reason": "-",
-        "manager_comment": "외심의 성질 이해에 시간이 걸렸으며, 후반부에는 질문이 줄어듦. 집중 지속을 위한 짧은 휴식 제안.",
-        "attachments": "중1_16회차.png",
-    },
-    {
-        "student_id": "1023",
-        "date": "2025-07-30",
-        "course": "[1기] 문항로 강사 온라인 멘토링 (수학)",
-        "duration_min": "60분",
-        "attendance": "출석",
-        "attitude_score": "2",
-        "understanding_score": "2",
-        "homework_score": "3",
-        "qna_difficulty_score": "2",
-        "topics": "삼각형의 내심 정의와 성질",
-        "notes": "수업 중 딴생각이 잦았고, 과제 수행률이 낮음.",
-        "absence_reason": "-",
-        "manager_comment": "전반적으로 참여도가 낮아, 개별 질문을 통해 참여를 유도할 필요가 있었음.",
-        "attachments": "중1_15회차.png",
-    },
-    {
-        "student_id": "1023",
-        "date": "2025-07-28",
-        "course": "[1기] 문항로 강사 온라인 멘토링 (수학)",
-        "duration_min": "60분",
-        "attendance": "출석",
-        "attitude_score": "3",
-        "understanding_score": "2",
-        "homework_score": "4",
-        "qna_difficulty_score": "3",
-        "topics": "직각삼각형의 성질, 피타고라스 정리",
-        "notes": "필기와 청취는 성실하나, 발표나 질문은 거의 하지 않음.",
-        "absence_reason": "-",
-        "manager_comment": "수동적인 태도를 보였으나 기본 개념 이해는 무난함. 발표 참여를 늘릴 필요가 있음.",
-        "attachments": "중1_14회차.png",
-    },
-]
 # deps: pip install upstage langchain langgraph pydantic
 
 import os
-from typing import Dict, Any
+import pandas as pd
+from typing import Dict, Any, List
 from pydantic import SecretStr
 from langgraph.graph import StateGraph, END
+import streamlit as st
 
-try:
-    import streamlit as st  # 선택사항(없으면 무시)
-except Exception:
-
-    class _Dummy:
-        secrets = {}
-
-    st = _Dummy()
 
 # ----- LLM (Upstage) -----
-from langchain_upstage import ChatUpstage  # upstage 공식 langchain 패키지
+from langchain_upstage import ChatUpstage
 
-api_key = ""
+api_key = "up_BaP6UVcWe0sJ1NvArezDfRtKfDxdi"
 
 
 def get_llm(model: str = "solar-pro-250422", temperature: float = 0.2) -> ChatUpstage:
     if not api_key:
         raise RuntimeError("UPSTAGE_API_KEY 환경변수가 필요합니다.")
     return ChatUpstage(model=model, temperature=temperature, api_key=api_key)
+
+
+# ----- CSV 데이터 로드 및 학생 데이터 추출 -----
+def load_math_feedback_data(csv_path: str = "math_feedback.csv") -> pd.DataFrame:
+    """CSV 파일을 로드합니다."""
+    return pd.read_csv(csv_path)
+
+
+def get_student_data_by_index(
+    csv_index: int, df: pd.DataFrame = None
+) -> List[Dict[str, Any]]:
+    """
+    CSV의 특정 index(행 번호)를 입력받아, 해당 행의 학생 이름과 날짜를 찾고
+    그 학생의 해당 날짜 이전 수업 기록들만 가져와서 demo.py의 기존 형식에 맞게 변환합니다.
+    """
+    if df is None:
+        df = load_math_feedback_data()
+
+    # CSV index 범위 확인
+    if csv_index < 0 or csv_index >= len(df):
+        raise ValueError(
+            f"CSV index {csv_index}가 범위를 벗어났습니다. (0-{len(df)-1})"
+        )
+
+    # 해당 index의 학생 이름과 날짜 가져오기
+    target_row = df.iloc[csv_index]
+    target_student_name = target_row["student_name"]
+    target_date = target_row["date"]
+
+    # 같은 이름의 학생 데이터 중에서 target_date 이전 데이터만 필터링
+    student_data = df[
+        (df["student_name"] == target_student_name) & (df["date"] <= target_date)
+    ].copy()
+
+    if student_data.empty:
+        raise ValueError(
+            f"학생 이름 {target_student_name}의 {target_date} 이전 데이터를 찾을 수 없습니다."
+        )
+
+    # 기존 demo.py 형식에 맞게 변환
+    result = []
+    for _, row in student_data.iterrows():
+        record = {
+            "date": row["date"],
+            "student_id": row["student_id"],
+            "student_name": row["student_name"],
+            "grade": row["grade"],
+            "subject": row["subject"],
+            "attendance": row["attendance"],
+            "attitude_score": row["attitude_score"],
+            "understanding_score": row["understanding_score"],
+            "homework_score": row["homework_score"],
+            "qna_difficulty_score": row[
+                "qa_score"
+            ],  # CSV의 qa_score를 qna_difficulty_score로 매핑
+            "progress_text": row["progress_text"],
+            "absence_reason": (
+                row["absence_reason"] if pd.notna(row["absence_reason"]) else ""
+            ),
+            "class_memo": row["class_memo"] if pd.notna(row["class_memo"]) else "",
+            "수업보완": row["수업보완"] if pd.notna(row["수업보완"]) else "",
+            "수업태도": row["수업태도"] if pd.notna(row["수업태도"]) else "",
+            "전체수업_Comment": (
+                row["전체수업 Comment"] if pd.notna(row["전체수업 Comment"]) else ""
+            ),
+        }
+        result.append(record)
+
+    # 날짜순으로 정렬 (오래된 것부터)
+    result.sort(key=lambda x: x["date"])
+    return result
+
+
+def get_student_data_by_id(
+    student_id: str, df: pd.DataFrame = None
+) -> List[Dict[str, Any]]:
+    """
+    특정 student_id의 모든 수업 기록을 가져와서 demo.py의 기존 형식에 맞게 변환합니다.
+    (기존 호환성을 위해 유지)
+    """
+    if df is None:
+        df = load_math_feedback_data()
+
+    # 해당 학생의 데이터 필터링
+    student_data = df[df["student_id"] == student_id].copy()
+
+    if student_data.empty:
+        raise ValueError(f"학생 ID {student_id}에 대한 데이터를 찾을 수 없습니다.")
+
+    # 기존 demo.py 형식에 맞게 변환
+    result = []
+    for _, row in student_data.iterrows():
+        record = {
+            "date": row["date"],
+            "student_id": row["student_id"],
+            "student_name": row["student_name"],
+            "grade": row["grade"],
+            "subject": row["subject"],
+            "attendance": row["attendance"],
+            "attitude_score": row["attitude_score"],
+            "understanding_score": row["understanding_score"],
+            "homework_score": row["homework_score"],
+            "qna_difficulty_score": row[
+                "qa_score"
+            ],  # CSV의 qa_score를 qna_difficulty_score로 매핑
+            "progress_text": row["progress_text"],
+            "absence_reason": (
+                row["absence_reason"] if pd.notna(row["absence_reason"]) else ""
+            ),
+            "class_memo": row["class_memo"] if pd.notna(row["class_memo"]) else "",
+            "수업보완": row["수업보완"] if pd.notna(row["수업보완"]) else "",
+            "수업태도": row["수업태도"] if pd.notna(row["수업태도"]) else "",
+            "전체수업_Comment": (
+                row["전체수업 Comment"] if pd.notna(row["전체수업 Comment"]) else ""
+            ),
+        }
+        result.append(record)
+
+    # 날짜순으로 정렬 (오래된 것부터)
+    result.sort(key=lambda x: x["date"])
+    return result
 
 
 # ----- 1) 숫자만 처리: 오늘 vs 이전 -----
@@ -182,7 +206,7 @@ def numeric_trend_node(state: Dict[str, Any]) -> Dict[str, Any]:
 def trend_explainer_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     입력: state['numeric_trend']
-    출력: state['numeric_trend_text'] (Korean, 간결한 문장)
+    출력: state['numeric_trend_text']
     - 규칙: 오늘 기준으로 이전 대비 변화 설명. 지표명 고정 4개.
     """
     nt = state.get("numeric_trend")
@@ -193,7 +217,7 @@ def trend_explainer_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # 프롬프트(시스템+유저). 텍스트 위주, 숫자는 근거로만.
     system_msg = (
-        "너는 교사용 요약 비서다. 주어진 지표의 오늘 점수와 직전 수업 대비 변화를 "
+        "너는 교사용 요약 비서다. 주어진 점수에서 직전 수업 대비 변화를 "
         "교사가 학부모에게 전달할 수 있는 간결한 한국어로 작성한다. 과장/모호어 금지. 한 항목당 1문장."
     )
     user_msg = f"""[지표 데이터]
@@ -205,41 +229,53 @@ def trend_explainer_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 [작성 규칙]
-1) 점수가 이전수업과 과거의 평균보다 1점이상 차이나는 경우에는, 오늘을 기준으로 '이전 대비 어떻게 달라졌는지'를 명확히 쓴다.
-2) 아래의 해석 가이드를 따라서 현재 상태가 어떠한지 구체적으로 언급한다.
-3) 각 항목 1문장, 총 4문장. 점수 언급 금지.
-4) 너무 딱딱하지 않게 말해야한다.
-4) 예시: 수업참여가 점점 늘어 수업태도가 좋아지는게 보이고 있습니다.
 
+1. 점수가 이전 수업이나 과거 평균보다 1점 이상 차이 날 경우, 오늘을 기준으로 이전 대비 어떻게 달라졌는지를 구체적으로 언급.
+
+2. 점수가 변화가 없더라도, 현재 상태를 잘 유지하는지 / 부족한 점이 지속되는지를 해석 가이드에 맞춰 명확히 언급.
+
+3. 각 항목은 1문장, 총 4문장 작성. 점수는 직접 언급하지 않음.
+
+4. 해석은 아래의 항목별 해석 가이드를 기반으로 구체적으로 기술.
+
+5. 문장은 부드럽지만 명확하게 작성. 
+
+6. 문장에 ‘수업태도’, ‘수업이해도’, ‘과제평가’, ‘질문난이도’ 등 항목명을 직접 사용하지 않음. 대신 행동·태도·변화 상황을 묘사하는 표현을 사용.
+
+### 예시:
+
+변화 있는 경우 → "수업에 적극적으로 임하며 참여하는 모습이 점점 더 활발해지고 있습니다."
+
+변화 없는 경우 → "기초와 응용을 균형 있게 묻는 질문을 꾸준히 이어가고 있습니다." / "집중이 잘 되지 않는 모습이 이어지고 있어 추가 지도가 필요합니다."
 
 ### 해석 가이드
-수업태도
-5: 적극적으로 참여하고 질문·발언이 활발해 수업 흐름에 긍정적으로 기여함.
-4: 대체로 성실히 참여하며 가끔 산만해져도 스스로 집중을 회복함.
-3: 기본 참여 의지는 있으나 발언·질문이 적어 교사의 유도가 필요함.
-2: 집중 시간이 짧고 참여도가 낮아 지속적인 관찰과 지도가 필요함.
-1: 참여 의지와 집중이 매우 낮아 목표 달성을 위해 강한 개입이 필요함.
+수업 태도
+5점: 수업 전반에 활발히 참여하며, 질문과 의견 제시로 분위기를 이끎.
+4점: 대부분 성실하게 임하며, 잠깐 흐트러져도 곧 집중을 회복함.
+3점: 참여 의지는 있으나 발언 빈도가 낮아 추가적인 참여 유도가 필요함.
+2점: 집중 유지가 어렵고 참여가 소극적이어서 지속적인 관심과 지원이 필요함.
+1점: 수업 몰입도와 참여도가 매우 낮아 목표 달성을 위해 강력한 지도·관리가 요구됨.
 
-수업이해도
-5: 내용을 깊이 이해하며 응용·확장 문제도 스스로 해결 가능함.
-4: 핵심을 잘 이해하고 간단한 응용 문제는 무리 없이 해결함.
-3: 기본 개념은 이해하나 복잡·응용 단계에서 도움이 필요함.
-2: 핵심 개념 이해에 어려움이 있어 반복 설명과 보충 자료가 필요함.
-1: 기초 개념부터 재학습이 필요함.
+수업 이해도
+5점: 학습 내용을 깊이 있게 파악하고, 변형·응용 과제도 스스로 해결함.
+4점: 핵심 내용을 잘 이해하며, 기본 수준의 응용 문제는 큰 어려움 없이 수행함.
+3점: 기초 개념은 이해하나, 난도가 높은 문제 해결에는 도움을 필요로 함.
+2점: 주요 개념 이해가 미흡해 반복 학습과 추가 자료 지원이 필요함.
+1점: 전반적인 기초부터 재학습이 필요한 수준임.
 
-과제평가
-5: 과제를 성실히 수행하고 정확도·완성도가 높으며 기한을 준수함.
-4: 대부분 수행했으나 일부 실수나 누락이 있음.
-3: 절반 이상 수행했지만 정확성과 완성도가 부족함.
-2: 일부만 수행하거나 기한을 자주 넘김.
-1: 거의 수행하지 않거나 미제출함.
+과제 수행
+5점: 모든 과제를 정성껏 완수하며, 정확성과 완성도가 높고 제출 기한을 지킴.
+4점: 대부분 수행하였으나 일부 세부 사항에서 실수나 누락이 있음.
+3점: 과제의 절반 이상을 제출했으나 정확성·완성도가 부족함.
+2점: 일부만 제출하거나 기한을 지키지 않는 경우가 잦음.
+1점: 과제를 거의 제출하지 않거나 미제출함.
 
-질문난이도
-5: 매우 심화되고 창의적인 질문으로 학습을 확장함.
-4: 심화·응용 수준의 질문을 자주 함.
-3: 기본 개념 확인 중심의 질문을 함.
-2: 단순 확인 또는 이해 부족에서 비롯된 질문이 많음.
-1: 질문이 거의 없거나 수업과 무관한 질문을 함.
+질문(상호작용)
+5점: 적극적으로 질문하며, 질문의 내용이 심화적임
+4점: 빈번하게 질문하며, 질문의 내용이 기초, 응용 수준임
+3점: 질문하기는 하되, 질문의 내용이 기초적인 수준임
+2점: 질문이 거의 없으며, 질문의 내용이 수업과 무관함
+1점: 질문이 없으며, 교수자의 질문에도 대답을 거의 하지 않음
 
 위 규칙을 지켜 4문장으로 출력만 해줘.
 """
@@ -263,10 +299,123 @@ def build_graph():
     return g.compile()
 
 
+# ----- Index 기반 학생 데이터 분석 함수 -----
+def analyze_student_by_index(csv_index: int) -> Dict[str, Any]:
+    """
+    CSV index를 받아서 해당 학생의 수치 데이터를 분석하고 추이를 제공합니다.
+    """
+    # 원본 CSV에서 해당 index의 정보 가져오기
+    df = load_math_feedback_data()
+    target_session_info = df.iloc[csv_index]
+
+    # CSV에서 학생 데이터 로드 (해당 날짜 이전 기록들)
+    student_data = get_student_data_by_index(csv_index)
+
+    # 그래프 생성 및 실행
+    graph = build_graph()
+    state = {"student_data": student_data}
+    result = graph.invoke(state)
+
+    return {
+        "csv_index": csv_index,
+        "student_name": (
+            student_data[0]["student_name"] if student_data else "알 수 없음"
+        ),
+        "student_id": student_data[0]["student_id"] if student_data else "알 수 없음",
+        "total_sessions": len(student_data),
+        "numeric_trend": result["numeric_trend"],
+        "trend_analysis": result["numeric_trend_text"],
+        "latest_session": student_data[-1] if student_data else None,
+        "target_session_info": {
+            "date": target_session_info["date"],
+            "grade": target_session_info["grade"],
+            "subject": target_session_info["subject"],
+            "attendance": target_session_info["attendance"],
+            "attitude_score": target_session_info["attitude_score"],
+            "understanding_score": target_session_info["understanding_score"],
+            "homework_score": target_session_info["homework_score"],
+            "qa_score": target_session_info["qa_score"],
+            "progress_text": target_session_info["progress_text"],
+            "absence_reason": (
+                target_session_info["absence_reason"]
+                if pd.notna(target_session_info["absence_reason"])
+                else ""
+            ),
+            "class_memo": (
+                target_session_info["class_memo"]
+                if pd.notna(target_session_info["class_memo"])
+                else ""
+            ),
+            "수업보완": (
+                target_session_info["수업보완"]
+                if pd.notna(target_session_info["수업보완"])
+                else ""
+            ),
+            "수업태도": (
+                target_session_info["수업태도"]
+                if pd.notna(target_session_info["수업태도"])
+                else ""
+            ),
+            "전체수업_Comment": (
+                target_session_info["전체수업 Comment"]
+                if pd.notna(target_session_info["전체수업 Comment"])
+                else ""
+            ),
+        },
+    }
+
+
 # ----- 예시 실행 -----
 if __name__ == "__main__":
-    graph = build_graph()
-    example_state = {"student_data": data}  # data 변수를 student_data로 전달
-    out = graph.invoke(example_state)
-    print(out["numeric_trend"])  # 구조화 결과
-    print(out["numeric_trend_text"])  # LLM가 만든 문장
+    # 예시: CSV의 5번째 행(index=5)에 있는 학생 분석
+    csv_index = 25  # 원하는 CSV 행 번호
+
+    try:
+        result = analyze_student_by_index(csv_index)
+        target_info = result["target_session_info"]
+
+        print("=== 분석 대상 ===")
+        print(f"CSV Index: {result['csv_index']}")
+        print(f"학생 이름: {result['student_name']}")
+        print(f"학생 ID: {result['student_id']}")
+        print(f"분석 기준 날짜: {target_info['date']}")
+        print(f"학년: {target_info['grade']}")
+        print(f"과목: {target_info['subject']}")
+        print(f"출석상태: {target_info['attendance']}")
+        print(f"총 수업 횟수 (해당 날짜까지): {result['total_sessions']}")
+
+        print("\n=== 해당 수업의 점수 ===")
+        print(f"수업태도: {target_info['attitude_score']}")
+        print(f"수업이해도: {target_info['understanding_score']}")
+        print(f"과제평가: {target_info['homework_score']}")
+        print(f"질문/답변: {target_info['qa_score']}")
+
+        print("\n=== 해당 수업의 레포트 ===")
+        print(f"진도: {target_info['progress_text']}")
+        if target_info["absence_reason"]:
+            print(f"결석사유: {target_info['absence_reason']}")
+        if target_info["class_memo"]:
+            print(f"수업메모: {target_info['class_memo']}")
+        if target_info["수업보완"]:
+            print(f"수업보완: {target_info['수업보완']}")
+        if target_info["수업태도"]:
+            print(f"수업태도 상세: {target_info['수업태도']}")
+        if target_info["전체수업_Comment"]:
+            print(f"전체 코멘트: {target_info['전체수업_Comment']}")
+
+        print("\n=== 수치 추이 분석 (해당 날짜까지의 추이) ===")
+        for metric, values in result["numeric_trend"].items():
+            print(
+                f"{metric}: 오늘={values['today']}, 이전={values['prev']}, 차이={values['diff']}, 추이={values['trend']}, 과거평균={values['past_avg']}"
+            )
+
+        print("\n=== LLM 분석 결과 ===")
+        print(result["trend_analysis"])
+
+    except Exception as e:
+        print(f"오류 발생: {e}")
+
+    # 다른 index로도 테스트 가능
+    # result2 = analyze_student_by_index(10)
+    # print("\n" + "="*50)
+    # print(result2["trend_analysis"])

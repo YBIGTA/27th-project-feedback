@@ -4,7 +4,7 @@ venv/
 env/
 
 # Python 캐시/빌드
-__pycache__/
+__pycache__
 *.py[cod]
 *.egg-info/
 build/
@@ -32,3 +32,4 @@ outputs/
 
 # 테스트 임시파일
 tmp/
+

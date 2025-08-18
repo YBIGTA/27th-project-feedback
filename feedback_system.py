@@ -9,14 +9,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class FeedbackSystem:
-    def __init__(self, model: str = "solar-1-mini-chat", temperature: float = 0.3):
+    def __init__(self, model: str = "solar-pro2", temperature: float = 0.3):
         api_key = os.getenv("UPSTAGE_API_KEY")
         if not api_key:
             raise RuntimeError("UPSTAGE_API_KEY 환경변수가 필요합니다.")
         self.llm = ChatUpstage(model=model, temperature=temperature, api_key=api_key)
         self.output_parser = StrOutputParser()
 
-    def _calculate_score_changes(self, past_records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def calculate_score_changes(self, past_records: List[Dict[str, Any]]) -> Dict[str, Any]:
         """전회차 대비 점수 변화 계산"""
         if len(past_records) < 2:
             return {"error": "비교를 위해 최소 2회 수업 데이터가 필요합니다."}
@@ -122,7 +122,7 @@ class FeedbackSystem:
             else:
                 # 프롬프트 구성 (기존 데이터 참고 포함)
                 all_records = past_records + [current_class_info]
-                changes_data = self._calculate_score_changes(all_records)
+                changes_data = self.calculate_score_changes(all_records)
                 if "error" in changes_data:
                     return changes_data["error"]
 
@@ -179,7 +179,7 @@ class FeedbackSystem:
         try:
             # AI 모델 호출
             response = self.llm.invoke([("system", system_msg), ("user", user_msg)])
-            return self.output_parser.parse(response)
+            return response.content if hasattr(response, "content") else str(response)
         
         except Exception as e:
             return f"피드백 생성 중 오류 발생: {e}"
@@ -257,11 +257,31 @@ if __name__ == "__main__":
             # 피드백 생성 클래스 초기화
             analyzer = FeedbackSystem()
             
+            # 점수 변화 계산 및 출력
+            all_records = past_records + [current_class]
+            if len(all_records) >= 2:
+                changes = analyzer.calculate_score_changes(all_records)
+                if "error" not in changes:
+                    print(f"\n📊 점수 변화:")
+                    for col, data in changes["changes"].items():
+                        col_name = {
+                            "attitude_score": "수업태도",
+                            "understanding_score": "수업이해도",
+                            "homework_score": "과제평가",
+                            "qa_score": "질문상호작용",
+                        }[col]
+                        print(
+                            f"  {col_name}: {data['current']}점 {data['symbol']} "
+                            f"(이전: {data['previous']}점)"
+                        )
+                else:
+                    print(f"❌ 오류: {changes['error']}")
+                
             # 피드백 생성
             print(f"\n📝 피드백 생성 중...")
             feedback_result = analyzer.generate_feedback(student_info, current_class, past_records)
-
+            
             # 5. 결과 출력
             print("\n--- AI 생성 피드백 ---")
-            print(feedback_result)
+            print(f"\n{feedback_result}")
             print("--------------------")

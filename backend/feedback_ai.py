@@ -1,45 +1,10 @@
-# 이 파일은 실제 AI 모델을 호출하지 않는 테스트용 Mock 파일입니다.
-# API 연결 테스트를 위해 고정된 더미 데이터를 즉시 반환합니다.
-
-import time
+import re
 from sqlalchemy.orm import Session
-from .. import crud, models
-# 공유 로직 모듈을 import 합니다.
-from .. import feedback_system
+from typing import List, Dict, Any
+from . import crud, models
+from core_logic import feedback_system
 
-def generate_ai_feedback(student_info, current_scores, past_classes):
-    """
-    AI 피드백 생성을 흉내 내는 Mock 함수
-    입력 데이터를 기반으로 간단한 테스트용 코멘트 생성
-    """
-    print("========== Mock AI Feedback Generator ==========")
-    print(f"학생 이름: {student_info.name}")
-    print(f"현재 점수: {current_scores.dict()}")
-    print(f"과거 기록 개수: {len(past_classes)}개")
-    print("==============================================")
-
-    # 더미 데이터 반환
-    mock_response = {
-        "improvement": (
-            f"[테스트 응답] {student_info.name} 학생의 수업 보완점입니다. "
-            f"이해도는 {current_scores.understanding_score}점이었습니다. "
-            "이 부분은 Mock 데이터이며, 실제 AI 응답이 아닙니다."
-        ),
-        "attitude": (
-            f"[테스트 응답] {student_info.name} 학생의 수업 태도입니다. "
-            f"태도 점수는 {current_scores.attitude_score}점이었습니다. "
-            "API 연결 테스트가 성공적으로 수행되었습니다."
-        ),
-        "overall": (
-            "[테스트 응답] 전체 코멘트입니다. "
-            "이 메시지가 보인다면, FastAPI 엔드포인트와 AI 모듈이 "
-            "정상적으로 연결된 것입니다."
-        )
-    }
-
-    return mock_response
-
-def _convert_orm_to_dict(past_classes: list[models.Class]) -> list[dict]:
+def _convert_orm_to_dict(past_classes: List[models.Class]) -> List[Dict]:
     """SQLAlchemy ORM 객체 리스트를 표준 딕셔너리 리스트로 변환합니다."""
     records = []
     for cls in past_classes:
@@ -50,36 +15,63 @@ def _convert_orm_to_dict(past_classes: list[models.Class]) -> list[dict]:
                 "understanding_score": cls.feedback.understanding_score,
                 "homework_score": cls.feedback.homework_score,
                 "qa_score": cls.feedback.qa_score,
-                "progress_text": cls.progress_text
+                "progress_text": cls.progress_text,
+                "class_memo": cls.class_memo,
             })
-    # 날짜순으로 정렬 (오래된 것이 먼저 오도록)
     return sorted(records, key=lambda x: x['date'])
+
+def _parse_ai_response(ai_response_text: str) -> Dict[str, str]:
+    """
+    정규 표현식을 사용하여 AI 응답을 안정적으로 파싱하고 후처리합니다.
+    """
+    try:
+        improvement_match = re.search(r"1\..*?(?:수업보완|개선 방향).*?:(.*?)(?=2\..*?(?:수업태도|학습 자세)|$)", ai_response_text, re.DOTALL)
+        attitude_match = re.search(r"2\..*?(?:수업태도|학습 자세).*?:(.*?)(?=3\..*?(?:전체 Comment|종합적 평가)|$)", ai_response_text, re.DOTALL)
+        overall_match = re.search(r"3\..*?(?:전체 Comment|종합적 평가).*?:(.*)", ai_response_text, re.DOTALL)
+
+        improvement = improvement_match.group(1).strip() if improvement_match else "내용 없음"
+        attitude = attitude_match.group(1).strip() if attitude_match else "내용 없음"
+        overall = overall_match.group(1).strip() if overall_match else "내용 없음"
+
+        if not improvement and not attitude and not overall:
+             overall = ai_response_text
+
+        return {"improvement": improvement, "attitude": attitude, "overall": overall}
+
+    except Exception:
+        print("\n--- AI 응답 파싱 실패 ---")
+        print(ai_response_text)
+        print("------------------------\n")
+        return {
+            "improvement": "AI 응답을 파싱할 수 없습니다.",
+            "attitude": "형식을 확인해주세요.",
+            "overall": ai_response_text
+        }
 
 def generate_ai_feedback(
     student_id: int,
     db: Session,
-    current_class_info: dict,
-    current_scores: dict
-):
-    # 1. DB에서 데이터 조회 (SQLAlchemy 객체)
+    current_class_info: Dict,
+    current_scores: Dict
+) -> Dict[str, str]:
+    """
+    DB에서 데이터를 조회하고, 공유 로직(FeedbackAnalyzer)을 호출하여
+    AI 피드백을 생성합니다.
+    """
     student_orm = crud.get_student(db, student_id)
     past_classes_orm = crud.get_student_past_classes(db, student_id)
-
-    # 2. 표준 형식(딕셔너리 리스트)으로 변환 (어댑터 역할)
-    past_records_dict = _convert_orm_to_dict(past_classes_orm)
+    
+    past_records_dict = _convert_orm_to_dict(list(reversed(past_classes_orm)))
     student_info_dict = {"name": student_orm.name, "grade": student_orm.grade}
+    
+    current_full_info = {**current_class_info, **current_scores}
 
-    # 3. 공유 로직 호출
-    final_prompt = feedback_analyzer.create_feedback_prompt(
+    analyzer = feedback_system.FeedbackSystem()
+
+    ai_response_text = analyzer.generate_feedback(
         student_info=student_info_dict,
-        current_class_info=current_class_info,
-        current_scores=current_scores,
+        current_class_info=current_full_info,
         past_records=past_records_dict
     )
-
-    # 4. AI 호출 및 결과 반환
-    # ai_response = feedback_analyzer.invoke_ai(final_prompt)
-    # return _parse_ai_response(ai_response)
-    print("===== Generated Prompt for Backend =====")
-    print(final_prompt)
-    return {"improvement": "백엔드 테스트 응답", "attitude": "성공", "overall": "완료"}
+    
+    return _parse_ai_response(ai_response_text)

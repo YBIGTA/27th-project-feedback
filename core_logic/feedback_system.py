@@ -127,7 +127,7 @@ class FeedbackSystem:
                     return changes_data["error"]
 
                 past_summary = "\n".join([
-                    f"- {record['date']}: 태도{record['attitude_score']}점, 이해도{record['understanding_score']}점, 과제{record['homework_score']}점, 질문{record['qa_score']}점"
+                    f"- {record.get('date', record.get('class_date'))}: 태도{record['attitude_score']}점, 이해도{record['understanding_score']}점, 과제{record['homework_score']}점, 질문{record['qa_score']}점"
                     for record in all_records[-3:] # 최근 3회 기록
                 ])
                 

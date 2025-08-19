@@ -24,7 +24,7 @@ class Feedback(FeedbackBase):
     ai_comment_overall: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ClassBase(BaseModel):
@@ -42,7 +42,7 @@ class Class(ClassBase):
     feedback: Optional[Feedback] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class StudentBase(BaseModel):
     name: str
@@ -59,7 +59,7 @@ class Student(StudentBase):
     classes: List[Class] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class FeedbackCreateRequest(BaseModel):
     """

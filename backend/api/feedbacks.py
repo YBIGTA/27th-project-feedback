@@ -37,9 +37,10 @@ def create_feedback_for_student(
     db_student.class_memo = request.class_info.class_memo
     
     ai_comments = generate_ai_feedback(
-        student_info=db_student,
-        current_scores=request.feedback_info,
-        past_classes=past_classes
+        student_id=student_id,
+        db=db,
+        current_class_info=request.class_info.dict(),
+        current_scores=request.feedback_info.dict()
     )
 
     crud.update_feedback_with_ai_comment(

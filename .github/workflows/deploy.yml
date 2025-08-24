@@ -1,0 +1,32 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 코드 체크아웃
+      # GitHub 리포지토리의 코드를 가상 환경으로 가져옵니다.
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. EC2에 SSH로 접속하여 배포 스크립트 실행
+      # appleboy/ssh-action 액션을 사용하여 EC2에 접속하고 명령어를 실행합니다.
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          
+          script: |
+            cd ~/27th-project-feedback
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            sudo systemctl restart 27th-project-feedback.service

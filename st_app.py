@@ -3,7 +3,7 @@ import requests
 from datetime import date
 
 # --- API 기본 설정 ---
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "https://27th-project-feedback.duckdns.org/"
 
 # --- API 요청 헬퍼 클래스 ---
 class ApiClient:

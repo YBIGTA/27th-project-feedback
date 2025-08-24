@@ -1,155 +1,273 @@
 import streamlit as st
 import requests
-import pandas as pd
-from datetime import datetime
+from datetime import date
 
-# --- 기본 설정 ---
-API_BASE_URL = "http://127.0.0.1:8000/api/v1"
+# --- API 기본 설정 ---
+BASE_URL = "http://127.0.0.1:8000"
 
-st.set_page_config(
-    page_title="AI 과외 피드백 시스템",
-    page_icon="🤖",
-    layout="centered",
-)
+# --- API 요청 헬퍼 클래스 ---
+class ApiClient:
+    def __init__(self):
+        self.base_url = BASE_URL
+        # 세션 상태에서 토큰을 가져옵니다. 없으면 None입니다.
+        self.token = st.session_state.get("token")
+        self.headers = {
+            "Authorization": f"Bearer {self.token}"
+        } if self.token else {}
 
-st.title("🤖 AI 과외 피드백 생성 시스템")
-
-# --- API 호출 함수 ---
-
-def get_students():
-    """백엔드에서 모든 학생 목록을 가져옵니다."""
-    try:
-        response = requests.get(f"{API_BASE_URL}/students")
-        if response.status_code == 200:
+    def _request(self, method, endpoint, **kwargs):
+        """공통 요청 로직"""
+        url = f"{self.base_url}{endpoint}"
+        try:
+            response = requests.request(method, url, headers=self.headers, **kwargs)
+            response.raise_for_status()  # 2xx 상태 코드가 아니면 예외 발생
+            # DELETE 요청 등 내용이 없는 성공 응답 처리
+            if response.status_code == 204:
+                return None
             return response.json()
-        else:
-            st.error(f"학생 목록 로딩 실패: {response.status_code}")
-            return []
-    except requests.exceptions.ConnectionError:
-        st.error("백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.")
-        return None
+        except requests.exceptions.HTTPError as err:
+            # API 에러 메시지를 사용자에게 보여주기 위해 st.error 사용
+            st.error(f"API 오류 발생: {err.response.status_code} - {err.response.json().get('detail', '오류 발생')}")
+            return None
+        except requests.exceptions.RequestException as err:
+            st.error(f"연결 오류: FastAPI 서버가 실행 중인지 확인하세요. ({err})")
+            return None
 
-def add_student(name, grade):
-    """신규 학생을 백엔드에 추가합니다."""
-    student_data = {"name": name, "grade": grade}
-    try:
-        response = requests.post(f"{API_BASE_URL}/students", json=student_data)
-        return response
-    except requests.exceptions.ConnectionError:
-        return None
+    # --- 인증 API ---
+    def signup(self, email, password, name):
+        return self._request("post", "/api/v1/teachers/", json={"email": email, "password": password, "name": name})
 
-def generate_feedback(student_id, class_info, feedback_info):
-    """특정 학생의 피드백 생성을 요청합니다."""
-    payload = {
-        "class_info": class_info,
-        "feedback_info": feedback_info
-    }
-    try:
-        response = requests.post(f"{API_BASE_URL}/students/{student_id}/feedbacks", json=payload)
-        return response
-    except requests.exceptions.ConnectionError:
-        return None
+    def login(self, email, password):
+        # 로그인은 form-data 형식으로 요청합니다.
+        return self._request("post", "/api/v1/auth/token", data={"username": email, "password": password})
 
-# --- 사이드바 ---
+    # --- 학생 API ---
+    def get_students(self):
+        return self._request("get", "/api/v1/students")
 
-st.sidebar.header("학생 관리")
+    def create_student(self, name, grade):
+        return self._request("post", "/api/v1/students", json={"name": name, "grade": grade})
 
-# 학생 목록 조회 및 선택
-students = get_students()
-if students is not None:
-    student_names = {f"{s['name']} (ID: {s['student_id']})": s for s in students}
-    selected_student_name = st.sidebar.selectbox(
-        "피드백을 생성할 학생을 선택하세요.",
-        options=student_names.keys(),
-        index=None,
-        placeholder="학생 선택..."
-    )
-    selected_student = student_names.get(selected_student_name)
-else:
-    selected_student = None
+    def update_student(self, student_id, name, grade):
+        return self._request("put", f"/api/v1/students/{student_id}", json={"name": name, "grade": grade})
 
-# 신규 학생 추가
-with st.sidebar.expander("신규 학생 추가"):
-    with st.form("new_student_form", clear_on_submit=True):
-        new_name = st.text_input("이름")
-        new_grade = st.number_input("학년", min_value=1, max_value=12, step=1)
-        submitted = st.form_submit_button("추가")
-        if submitted:
-            if new_name:
-                response = add_student(new_name, new_grade)
-                if response and response.status_code == 201:
-                    st.success(f"'{new_name}' 학생을 추가했습니다.")
+    def delete_student(self, student_id):
+        return self._request("delete", f"/api/v1/students/{student_id}")
+
+    # --- 피드백 API ---
+    def get_feedbacks(self, student_id):
+        return self._request("get", f"/api/v1/students/{student_id}/feedbacks")
+
+    def create_feedback(self, student_id, class_info, feedback_info):
+        payload = {"class_info": class_info, "feedback_info": feedback_info}
+        return self._request("post", f"/api/v1/students/{student_id}/feedbacks", json=payload)
+
+
+# --- UI 렌더링 함수 ---
+
+def show_login_signup():
+    """로그인 및 회원가입 UI를 표시하는 함수"""
+    st.title("AI 피드백 시스템")
+
+    login_tab, signup_tab = st.tabs(["로그인", "회원가입"])
+
+    with login_tab:
+        with st.form("login_form"):
+            email = st.text_input("이메일")
+            password = st.text_input("비밀번호", type="password")
+            submitted = st.form_submit_button("로그인")
+            if submitted:
+                client = ApiClient()
+                response = client.login(email, password)
+                if response and "access_token" in response:
+                    # 로그인 성공 시 토큰을 세션에 저장하고 페이지를 새로고침합니다.
+                    st.session_state["token"] = response["access_token"]
+                    st.session_state["logged_in"] = True
                     st.rerun()
                 else:
-                    st.error("학생 추가에 실패했습니다.")
-            else:
-                st.warning("학생 이름을 입력해주세요.")
+                    st.error("로그인에 실패했습니다. 이메일과 비밀번호를 확인하세요.")
 
-# --- 메인 화면 ---
+    with signup_tab:
+        with st.form("signup_form"):
+            name = st.text_input("이름")
+            email = st.text_input("사용할 이메일")
+            password = st.text_input("사용할 비밀번호", type="password")
+            submitted = st.form_submit_button("회원가입")
+            if submitted:
+                client = ApiClient()
+                response = client.signup(email, password, name)
+                if response:
+                    st.success("회원가입 성공! 로그인 탭에서 로그인해주세요.")
+                # API 클라이언트에서 이미 에러를 처리하므로 별도 else 불필요
 
-if selected_student:
-    st.header(f"📝 '{selected_student['name']}' 학생 피드백 생성")
+def show_student_management():
+    """학생 관리 메인 페이지를 표시하는 함수"""
+    client = ApiClient()
+    st.sidebar.title(f"안녕하세요!")
+    if st.sidebar.button("로그아웃"):
+        # 세션 상태를 초기화하고 페이지를 새로고침합니다.
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
 
-    with st.form("feedback_form"):
-        st.subheader("수업 정보")
-        col1, col2 = st.columns(2)
-        with col1:
-            subject = st.text_input("과목", value="수학")
-        with col2:
-            class_date = st.date_input("수업 날짜", value=datetime.today())
-        
-        progress_text = st.text_input("수업 진도", placeholder="예: 2단원 분수의 나눗셈")
-        class_memo = st.text_area("특이 사항", placeholder="예: 오늘따라 집중력이 좋았음")
+    st.title("학생 관리")
 
-        st.divider()
+    # --- 신규 학생 추가 ---
+    with st.expander("신규 학생 추가하기"):
+        with st.form("new_student_form", clear_on_submit=True):
+            name = st.text_input("학생 이름")
+            grade = st.number_input("학년", min_value=1, max_value=12, step=1)
+            submitted = st.form_submit_button("추가")
+            if submitted:
+                response = client.create_student(name, grade)
+                if response:
+                    st.toast(f"✅ {name} 학생을 추가했습니다.")
+                    st.rerun() # 학생 목록을 새로고치기 위해 페이지 새로고침
 
-        st.subheader("수업 평가 점수 (1-5점)")
-        col1, col2 = st.columns(2)
-        with col1:
+    st.divider()
+
+    # --- 학생 목록 표시 ---
+    students = client.get_students()
+    if students is None:
+        st.warning("학생 정보를 불러오는 데 실패했습니다.")
+        return
+    if not students:
+        st.info("등록된 학생이 없습니다. 먼저 학생을 추가해주세요.")
+    else:
+        for student in students:
+            with st.container(border=True):
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.subheader(f"{student['name']} ({student['grade']}학년)")
+                
+                with col2:
+                    # 선택된 학생 ID를 세션에 저장하여 피드백 관리 UI를 표시
+                    if st.button("피드백 관리", key=f"manage_{student['student_id']}"):
+                        st.session_state["selected_student_id"] = student["student_id"]
+                        st.session_state["page"] = "feedback"
+                        st.rerun()
+
+                # --- 학생 정보 수정 및 삭제 ---
+                with st.expander("학생 정보 수정/삭제"):
+                    with st.form(f"edit_form_{student['student_id']}"):
+                        new_name = st.text_input("이름", value=student['name'], key=f"name_{student['student_id']}")
+                        new_grade = st.number_input("학년", value=student['grade'], min_value=1, max_value=12, step=1, key=f"grade_{student['student_id']}")
+                        
+                        update_col, delete_col = st.columns(2)
+                        if update_col.form_submit_button("수정"):
+                            client.update_student(student['student_id'], new_name, new_grade)
+                            st.toast(f"✅ {new_name} 학생 정보를 수정했습니다.")
+                            st.rerun()
+                        
+                        if delete_col.form_submit_button("삭제"):
+                            client.delete_student(student['student_id'])
+                            st.toast(f"✅ {student['name']} 학생을 삭제했습니다.")
+                            st.rerun()
+
+
+def show_feedback_management():
+    """특정 학생의 피드백 관리 페이지를 표시하는 함수"""
+    client = ApiClient()
+    student_id = st.session_state.get("selected_student_id")
+
+    if not student_id:
+        st.warning("학생이 선택되지 않았습니다. 학생 관리 페이지로 돌아갑니다.")
+        st.session_state["page"] = "students"
+        st.rerun()
+    
+    # 학생 정보를 다시 불러와서 제목에 표시 (이름이 바뀔 수 있으므로)
+    students = client.get_students()
+    student_name = "학생"
+    if students:
+        selected_student = next((s for s in students if s['student_id'] == student_id), None)
+        if selected_student:
+            student_name = selected_student['name']
+
+    st.title(f"'{student_name}' 학생 피드백 관리")
+
+    if st.button("◀ 학생 목록으로 돌아가기"):
+        st.session_state["page"] = "students"
+        del st.session_state["selected_student_id"]
+        st.rerun()
+
+    # --- 신규 피드백 생성 ---
+    with st.expander("신규 피드백 생성하기"):
+        with st.form("new_feedback_form", clear_on_submit=True):
+            st.subheader("수업 정보")
+            subject = st.text_input("과목")
+            class_date = st.date_input("수업 날짜", value=date.today())
+            progress_text = st.text_area("수업 진도")
+            class_memo = st.text_area("수업 메모")
+
+            st.subheader("평가 점수")
             attitude_score = st.slider("수업 태도", 1, 5, 3)
-            understanding_score = st.slider("수업 이해도", 1, 5, 3)
-        with col2:
-            qa_score = st.slider("질문/상호작용", 1, 5, 3)
-            no_homework = st.checkbox("과제 없음")
-            homework_score_value = 99 if no_homework else 3
-            homework_score = st.slider("과제 평가", 1, 5, homework_score_value, disabled=no_homework)
+            understanding_score = st.slider("이해도", 1, 5, 3)
+            homework_score = st.slider("과제 수행도", 1, 5, 3)
+            qa_score = st.slider("질의응답", 1, 5, 3)
+
+            submitted = st.form_submit_button("AI 피드백 생성")
+            if submitted:
+                with st.spinner("AI가 피드백을 생성 중입니다..."):
+                    class_info = {
+                        "subject": subject, "class_date": str(class_date),
+                        "progress_text": progress_text, "class_memo": class_memo
+                    }
+                    feedback_info = {
+                        "attitude_score": attitude_score, "understanding_score": understanding_score,
+                        "homework_score": homework_score, "qa_score": qa_score
+                    }
+                    response = client.create_feedback(student_id, class_info, feedback_info)
+                if response:
+                    st.toast("✅ AI 피드백 생성을 완료했습니다.")
+                    st.rerun()
+
+    st.divider()
+
+    # --- 피드백 목록 표시 ---
+    st.header("피드백 기록")
+    feedbacks = client.get_feedbacks(student_id)
+    if feedbacks is None:
+        st.warning("피드백 정보를 불러오는 데 실패했습니다.")
+        return
+    if not feedbacks:
+        st.info("작성된 피드백이 없습니다.")
+    else:
+        for fb in feedbacks:
+            # 피드백이 연결된 수업 정보를 찾기 위해 전체 학생 목록을 다시 조회 (비효율적이지만 간단한 구현)
+            class_date_str = "날짜 정보 없음"
+            if students:
+                for s in students:
+                    for c in s.get('classes', []):
+                        if c.get('feedback') and c['feedback']['feedback_id'] == fb['feedback_id']:
+                            class_date_str = c['class_date']
+                            break
             
-        # 피드백 생성 버튼
-        submit_feedback = st.form_submit_button("🤖 AI 피드백 생성하기", use_container_width=True)
+            with st.expander(f"{class_date_str} 수업 피드백"):
+                st.markdown(f"**👍 발전한 점**")
+                st.info(fb.get('ai_comment_improvement') or "내용 없음")
+                st.markdown(f"**💪 개선할 점**")
+                st.warning(fb.get('ai_comment_attitude') or "내용 없음")
+                st.markdown(f"**📝 총평**")
+                st.success(fb.get('ai_comment_overall') or "내용 없음")
 
-    if submit_feedback:
-        with st.spinner("AI가 피드백을 생성 중입니다..."):
-            class_info = {
-                "subject": subject,
-                "class_date": class_date.isoformat(),
-                "progress_text": progress_text,
-                "class_memo": class_memo
-            }
-            feedback_info = {
-                "attitude_score": attitude_score,
-                "understanding_score": understanding_score,
-                "homework_score": homework_score,
-                "qa_score": qa_score
-            }
 
-            response = generate_feedback(selected_student['student_id'], class_info, feedback_info)
+# --- 메인 앱 로직 ---
+def main():
+    """메인 함수: 세션 상태에 따라 적절한 페이지를 보여줍니다."""
+    if "logged_in" not in st.session_state:
+        st.session_state["logged_in"] = False
 
-            if response and response.status_code == 200:
-                feedback_result = response.json().get('feedback', {})
-                st.success("AI 피드백 생성이 완료되었습니다!")
-                
-                st.subheader("✅ AI 생성 피드백 결과")
-                st.markdown(f"**수업 보완점**")
-                st.info(feedback_result.get('ai_comment_improvement', 'N/A'))
-                
-                st.markdown(f"**수업 태도**")
-                st.info(feedback_result.get('ai_comment_attitude', 'N/A'))
+    if not st.session_state["logged_in"]:
+        show_login_signup()
+    else:
+        # 페이지 상태가 없으면 학생 관리 페이지를 기본으로 설정
+        if "page" not in st.session_state:
+            st.session_state["page"] = "students"
 
-                st.markdown(f"**전체 Comment**")
-                st.info(feedback_result.get('ai_comment_overall', 'N/A'))
-            else:
-                st.error("피드백 생성에 실패했습니다. 백엔드 로그를 확인해주세요.")
+        if st.session_state["page"] == "students":
+            show_student_management()
+        elif st.session_state["page"] == "feedback":
+            show_feedback_management()
 
-else:
-    st.info("👈 사이드바에서 학생을 선택하거나 신규 학생을 추가해주세요.")
-
+if __name__ == "__main__":
+    main()

@@ -2,8 +2,10 @@ from fastapi import FastAPI
 
 from . import models
 from .database import engine
+from .initial_data import init_db
 
 models.Base.metadata.create_all(bind=engine)
+init_db()
 
 from .api import students, feedbacks, feedback_details, auth, grades
 

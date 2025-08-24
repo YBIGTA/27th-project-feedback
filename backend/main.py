@@ -5,11 +5,12 @@ from .database import engine
 
 models.Base.metadata.create_all(bind=engine)
 
-from .api import students, feedbacks, feedback_details, auth 
+from .api import students, feedbacks, feedback_details, auth, grades
 
 app = FastAPI()
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(grades.router)
 app.include_router(students.router)
 app.include_router(feedbacks.router)
 app.include_router(feedback_details.router)

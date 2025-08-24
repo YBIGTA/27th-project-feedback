@@ -73,9 +73,16 @@ class Class(ClassBase):
     class Config:
         from_attributes = True
 
+class Grade(BaseModel):
+    grade_id: int
+    grade_name: str
+
+    class Config:
+        from_attributes = True
+        
 class StudentBase(BaseModel):
     name: str
-    grade: int
+    grade_id: int 
 
 class StudentCreate(StudentBase):
     pass
@@ -85,6 +92,7 @@ class StudentUpdate(StudentBase):
 
 class Student(StudentBase):
     student_id: int
+    grade_info: Grade 
     classes: List[Class] = []
 
     class Config:

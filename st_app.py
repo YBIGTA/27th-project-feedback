@@ -26,9 +26,11 @@ class ApiClient:
                 return None
             return response.json()
         except requests.exceptions.HTTPError as err:
-            # API 에러 메시지를 사용자에게 보여주기 위해 st.error 사용
-            st.error(f"API 오류 발생: {err.response.status_code} - {err.response.json().get('detail', '오류 발생')}")
-            return None
+            try:
+                error_detail = err.response.json()
+                detail_message = error_detail.get('detail', '오류 발생')
+            except requests.exceptions.JSONDecodeError:
+                detail_message = err.response.text
         except requests.exceptions.RequestException as err:
             st.error(f"연결 오류: FastAPI 서버가 실행 중인지 확인하세요. ({err})")
             return None
@@ -45,12 +47,12 @@ class ApiClient:
     def get_students(self):
         return self._request("get", "/api/v1/students")
 
-    def create_student(self, name, grade):
-        return self._request("post", "/api/v1/students", json={"name": name, "grade": grade})
+    def create_student(self, name, grade_id):
+        return self._request("post", "/api/v1/students", json={"name": name, "grade_id": grade_id})
 
-    def update_student(self, student_id, name, grade):
-        return self._request("put", f"/api/v1/students/{student_id}", json={"name": name, "grade": grade})
-
+    def update_student(self, student_id, name, grade_id):
+        return self._request("put", f"/api/v1/students/{student_id}", json={"name": name, "grade_id": grade_id})
+    
     def delete_student(self, student_id):
         return self._request("delete", f"/api/v1/students/{student_id}")
 
@@ -61,7 +63,10 @@ class ApiClient:
     def create_feedback(self, student_id, class_info, feedback_info):
         payload = {"class_info": class_info, "feedback_info": feedback_info}
         return self._request("post", f"/api/v1/students/{student_id}/feedbacks", json=payload)
-
+    
+    # --- 학년 API ---
+    def get_grades(self):
+        return self._request("get", "/api/v1/grades")
 
 # --- UI 렌더링 함수 ---
 
@@ -114,15 +119,24 @@ def show_student_management():
 
     # --- 신규 학생 추가 ---
     with st.expander("신규 학생 추가하기"):
-        with st.form("new_student_form", clear_on_submit=True):
-            name = st.text_input("학생 이름")
-            grade = st.number_input("학년", min_value=1, max_value=12, step=1)
-            submitted = st.form_submit_button("추가")
-            if submitted:
-                response = client.create_student(name, grade)
-                if response:
-                    st.toast(f"✅ {name} 학생을 추가했습니다.")
-                    st.rerun() # 학생 목록을 새로고치기 위해 페이지 새로고침
+        # API를 통해 전체 학년 목록을 가져옵니다.
+        grades_list = client.get_grades()
+        if grades_list:
+            grade_options = {grade['grade_name']: grade['grade_id'] for grade in grades_list}
+
+            with st.form("new_student_form", clear_on_submit=True):
+                name = st.text_input("학생 이름")
+                # 숫자 입력 대신 선택 상자 사용
+                selected_grade_name = st.selectbox("학년", options=grade_options.keys())
+                
+                submitted = st.form_submit_button("추가")
+                if submitted:
+                    # 선택된 학년 이름에 해당하는 ID를 찾아 API로 전송
+                    selected_grade_id = grade_options[selected_grade_name]
+                    response = client.create_student(name, selected_grade_id) # grade -> grade_id
+                    if response:
+                        st.toast(f"✅ {name} 학생을 추가했습니다.")
+                        st.rerun()
 
     st.divider()
 
@@ -138,7 +152,7 @@ def show_student_management():
             with st.container(border=True):
                 col1, col2 = st.columns([3, 1])
                 with col1:
-                    st.subheader(f"{student['name']} ({student['grade']}학년)")
+                    st.subheader(f"{student['name']} ({student['grade_info']['grade_name']})")
                 
                 with col2:
                     # 선택된 학생 ID를 세션에 저장하여 피드백 관리 UI를 표시
@@ -151,11 +165,16 @@ def show_student_management():
                 with st.expander("학생 정보 수정/삭제"):
                     with st.form(f"edit_form_{student['student_id']}"):
                         new_name = st.text_input("이름", value=student['name'], key=f"name_{student['student_id']}")
-                        new_grade = st.number_input("학년", value=student['grade'], min_value=1, max_value=12, step=1, key=f"grade_{student['student_id']}")
+
+                        current_grade_name = student['grade_info']['grade_name']
+                        current_grade_index = list(grade_options.keys()).index(current_grade_name) if current_grade_name in grade_options.keys() else 0
+                        
+                        selected_new_grade_name = st.selectbox("학년", options=grade_options.keys(), index=current_grade_index, key=f"grade_{student['student_id']}")
                         
                         update_col, delete_col = st.columns(2)
                         if update_col.form_submit_button("수정"):
-                            client.update_student(student['student_id'], new_name, new_grade)
+                            selected_new_grade_id = grade_options[selected_new_grade_name]
+                            client.update_student(student['student_id'], new_name, selected_new_grade_id)
                             st.toast(f"✅ {new_name} 학생 정보를 수정했습니다.")
                             st.rerun()
                         

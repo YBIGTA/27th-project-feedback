@@ -36,21 +36,25 @@ def create_feedback_for_student(
         feedback_info=request.feedback_info
     )
 
-    # AI 피드백 생성 로직
-    ai_comments = generate_ai_feedback(
-        student_id=student_id,
-        db=db,
-        current_class_info=request.class_info.dict(),
-        current_scores=request.feedback_info.dict()
-    )
+    try:
+        # AI 피드백 생성 시도
+        ai_comments = generate_ai_feedback(
+            student_id=student_id,
+            db=db,
+            current_class_info=request.class_info.dict(),
+            current_scores=request.feedback_info.dict()
+        )
 
-    # AI 코멘트 업데이트
-    crud.update_feedback_with_ai_comment(
-        db=db,
-        feedback_id=created_class.feedback.feedback_id,
-        ai_comments=ai_comments,
-        teacher_id=current_teacher.teacher_id
-    )
+        # 성공 시 AI 코멘트 업데이트
+        crud.update_feedback_with_ai_comment(
+            db=db,
+            feedback_id=created_class.feedback.feedback_id,
+            ai_comments=ai_comments,
+            teacher_id=current_teacher.teacher_id
+        )
+    except Exception as e:
+        # AI 피드백 생성 실패 시
+        print(f"AI 피드백 생성 중 오류 발생: {e}")
     
     db.refresh(created_class)
     return created_class

@@ -20,7 +20,17 @@ class Teacher(Base):
     # Teacher -> Class (One-to-Many)
     classes = relationship("Class", back_populates="teacher", cascade="all, delete-orphan")
 
+class Grade(Base):
+    """
+    학년 정보 테이블 모델 (e.g., 1: 초1, 7: 중1, 13: 재수생)
+    """
+    __tablename__ = "grades"
+    
+    grade_id = Column(Integer, primary_key=True) # 1부터 13까지의 값
+    grade_name = Column(String(50), nullable=False, unique=True) # "초등학교 1학년", "재수생" 등
 
+    students = relationship("Student", back_populates="grade_info")
+    
 class Student(Base):
     """
     학생 정보 테이블 모델
@@ -30,7 +40,7 @@ class Student(Base):
     student_id = Column(Integer, primary_key=True, autoincrement=True)
     teacher_id = Column(Integer, ForeignKey("teachers.teacher_id", ondelete="CASCADE"), nullable=False)
     name = Column(String(50), nullable=False)
-    grade = Column(Integer, nullable=False)
+    grade_id = Column(Integer, ForeignKey("grades.grade_id"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
     # Student -> Teacher (Many-to-One)
@@ -38,7 +48,8 @@ class Student(Base):
     # Student -> Class (One-to-Many)
     classes = relationship("Class", back_populates="student", cascade="all, delete-orphan")
 
-
+    grade_info = relationship("Grade", back_populates="students")
+    
 class Class(Base):
     """
     수업 기록 테이블 모델

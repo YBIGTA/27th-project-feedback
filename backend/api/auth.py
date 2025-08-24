@@ -1,14 +1,44 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from jose import JWTError, jwt
 
 from .. import crud, schemas, security
 from ..database import get_db
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 # APIRouter 인스턴스 생성
 router = APIRouter(
     tags=["Authentication"]
 )
+
+def get_current_teacher(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.Teacher:
+    """
+    JWT 토큰을 검증하고 현재 로그인된 선생님 정보를 반환하는 의존성 함수
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="유효한 자격 증명을 찾을 수 없습니다.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        # 1. 토큰 디코딩
+        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        # 2. 토큰 데이터 유효성 검사
+        token_data = schemas.TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+    
+    # 3. DB에서 사용자 정보 조회
+    teacher = crud.get_teacher_by_email(db, email=token_data.email)
+    if teacher is None:
+        raise credentials_exception
+        
+    return teacher
 
 @router.post("/teachers/", response_model=schemas.Teacher, status_code=status.HTTP_201_CREATED)
 def create_teacher_signup(teacher: schemas.TeacherCreate, db: Session = Depends(get_db)):

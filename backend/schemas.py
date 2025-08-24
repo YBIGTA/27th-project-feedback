@@ -1,7 +1,36 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import date
 
+class TeacherCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+
+class Teacher(BaseModel):
+    """
+    API 응답으로 사용할 선생님 정보 스키마 (비밀번호 제외)
+    """
+    teacher_id: int
+    email: EmailStr
+    name: str
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    """
+    로그인 성공 시 반환될 JWT 액세스 토큰 스키마
+    """
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    """
+    JWT 토큰을 디코딩했을 때 얻게 될 데이터(payload) 스키마
+    """
+    email: Optional[EmailStr] = None
+    
 class FeedbackBase(BaseModel):
     attitude_score: int
     understanding_score: int
@@ -51,7 +80,7 @@ class StudentBase(BaseModel):
 class StudentCreate(StudentBase):
     pass
 
-class StudentUpdate(StudentBase): # <<<< ⭐️ 추가된 부분
+class StudentUpdate(StudentBase):
     pass
 
 class Student(StudentBase):

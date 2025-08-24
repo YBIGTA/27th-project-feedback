@@ -1,8 +1,15 @@
 from fastapi import FastAPI
-from .api import students, feedbacks, feedback_details
+
+from . import models
+from .database import engine
+
+models.Base.metadata.create_all(bind=engine)
+
+from .api import students, feedbacks, feedback_details, auth 
 
 app = FastAPI()
 
+app.include_router(auth.router)
 app.include_router(students.router)
 app.include_router(feedbacks.router)
 app.include_router(feedback_details.router)

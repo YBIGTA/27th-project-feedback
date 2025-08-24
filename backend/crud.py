@@ -1,5 +1,29 @@
 from sqlalchemy.orm import Session, joinedload
 from . import models, schemas
+from .security import get_password_hash
+
+def get_teacher_by_email(db: Session, email: str):
+    """
+    이메일로 특정 선생님의 정보를 조회합니다.
+    로그인 시 사용자를 확인하는 데 사용됩니다.
+    """
+    return db.query(models.Teacher).filter(models.Teacher.email == email).first()
+
+def create_teacher(db: Session, teacher: schemas.TeacherCreate):
+    """
+    새로운 선생님 사용자를 생성합니다.
+    입력받은 비밀번호를 해싱하여 저장합니다.
+    """
+    hashed_password = get_password_hash(teacher.password)
+    db_teacher = models.Teacher(
+        email=teacher.email,
+        name=teacher.name,
+        hashed_password=hashed_password
+    )
+    db.add(db_teacher)
+    db.commit()
+    db.refresh(db_teacher)
+    return db_teacher
 
 def get_student(db: Session, student_id: int):
     """

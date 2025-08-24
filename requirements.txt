@@ -81,3 +81,9 @@ uvicorn==0.35.0
 watchdog==6.0.0
 xxhash==3.5.0
 zstandard==0.23.0
+
+passlib[bcrypt]==1.7.4
+python-jose==3.5.0
+ecdsa==0.19.1
+rsa==4.9.1
+pyasn1==0.6.1

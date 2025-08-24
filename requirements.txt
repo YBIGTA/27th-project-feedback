@@ -87,3 +87,7 @@ python-jose==3.5.0
 ecdsa==0.19.1
 rsa==4.9.1
 pyasn1==0.6.1
+jose==1.0.0
+dnspython==2.7.0
+email-validator==2.2.0
+python-multipart==0.0.20

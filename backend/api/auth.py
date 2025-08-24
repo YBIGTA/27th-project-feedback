@@ -13,7 +13,7 @@ router = APIRouter(
     tags=["Authentication"]
 )
 
-def get_current_teacher(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.Teacher:
+def get_current_teacher(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> schemas.Teacher:
     """
     JWT 토큰을 검증하고 현재 로그인된 선생님 정보를 반환하는 의존성 함수
     """

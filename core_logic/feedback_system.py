@@ -194,7 +194,7 @@ class FeedbackSystem:
             """
             response_section3 = self.llm.invoke([("system", system_msg), ("user", user_msg_3)])
             response_section3 = response_section3.content if hasattr(response_section3, "content") else str(response_section3)
-            return response_section1 + "\n\n" + response_section2 + "\n\n" + response_section3
+            return response_section1 + "|||SECTION_SEPARATOR|||" + response_section2 + "|||SECTION_SEPARATOR|||" + response_section3
         except Exception as e:
             return f"피드백 생성 중 오류 발생: {e}"
 

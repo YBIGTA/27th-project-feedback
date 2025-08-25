@@ -29,8 +29,11 @@ class ApiClient:
             try:
                 error_detail = err.response.json()
                 detail_message = error_detail.get('detail', '오류 발생')
+                st.error(f"HTTP 오류: {detail_message}")
             except requests.exceptions.JSONDecodeError:
                 detail_message = err.response.text
+                st.error(f"HTTP 오류: {detail_message}")
+            return None
         except requests.exceptions.RequestException as err:
             st.error(f"연결 오류: FastAPI 서버가 실행 중인지 확인하세요. ({err})")
             return None
@@ -142,6 +145,7 @@ def show_student_management():
 
     # --- 학생 목록 표시 ---
     students = client.get_students()
+    # why does this comes out as None? There is one student here accordin to DB
     if students is None:
         st.warning("학생 정보를 불러오는 데 실패했습니다.")
         return

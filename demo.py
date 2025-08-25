@@ -22,8 +22,6 @@ import streamlit as st
 # ----- LLM (Upstage) -----
 from langchain_upstage import ChatUpstage
 
-api_key = "up_BaP6UVcWe0sJ1NvArezDfRtKfDxdi"
-
 
 def get_llm(model: str = "solar-pro-250422", temperature: float = 0.2) -> ChatUpstage:
     if not api_key:

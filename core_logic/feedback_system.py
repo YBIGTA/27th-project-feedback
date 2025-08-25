@@ -58,6 +58,8 @@ class FeedbackSystem:
 
         return {"changes": changes, "latest_data": latest, "previous_data": previous}
 
+
+
     def generate_feedback(
         self,
         student_info: Dict[str, Any],
@@ -73,52 +75,36 @@ class FeedbackSystem:
                 system_msg += "신규 학생의 첫 수업 평가 데이터를 바탕으로 학부모님께 전달할 수 있는 전문적이고 따뜻한 피드백을 작성합니다."
             else:
                 system_msg += "교수자가 입력한 수업 평가 데이터와 학생의 이전 수업 기록을 참고하여 피드백을 담은 레포트를 제공해야합니다."
+            
+
             system_msg += """
-**중요**: 이 피드백은 학부모님께 전달되는 것이므로, 
-- 반드시 3개 섹션으로 구성해야 함
-- 존댓말을 사용하고 정중한 어조로 작성
-- 학부모님이 이해하기 쉽게 명확하게 설명
-- 학생의 첫인상과 학습 태도를 잘 반영
-- 구체적이고 실용적인 조언 제공
-- 마크다운 문법 없이 텍스트로 작성"""
+            **중요**: 이 피드백은 학부모님께 전달되는 것이므로, 
+            - 존댓말을 사용하고 정중한 어조로 작성
+            - 학부모님이 이해하기 쉽게 명확하게 설명
+            - 학생의 첫인상과 학습 태도를 잘 반영
+            - 구체적이고 실용적인 조언 제공
+            - 마크다운 문법 없이 텍스트로 작성"""
 
             user_msg = f"""
-[학생 정보]
-- 학생: {student_info.get("name")}
-- 학년: {student_info.get("grade")}"""
+            [학생 정보]
+            - 학생: {student_info.get("name")}
+            - 학년: {student_info.get("grade")}"""
 
             if is_new:
                 user_msg += f"""
-[첫 수업 평가 점수]
-- 수업태도: {current_class_info.get("attitude_score")}점
-- 수업이해도: {current_class_info.get("understanding_score")}점
-- 과제평가: {current_class_info.get("homework_score")}점
-- 질문상호작용: {current_class_info.get("qa_score")}점
 
-[첫 수업 내용]
-{current_class_info.get("progress_text")}
+            [첫 수업 평가 점수]
+            - 수업태도: {current_class_info.get("attitude_score")}점
+            - 수업이해도: {current_class_info.get("understanding_score")}점
+            - 과제평가: {current_class_info.get("homework_score")}점
+            - 질문상호작용: {current_class_info.get("qa_score")}점
 
-[첫 수업 특이사항]
-{current_class_info.get("class_memo") if str(current_class_info.get("class_memo", "")).strip() else "특별한 특이사항 없음"}
+            [첫 수업 내용]
+            {current_class_info.get("progress_text")}
 
-위 정보를 바탕으로 반드시 다음 3개 섹션으로 구성된 피드백을 작성해주세요:
-
-**1. 수업보완: 부족한 부분과 개선 방향**
-[부족한 부분과 개선 방향을 3-5문장으로 작성]
-
-**2. 수업태도: 참여도와 학습 자세 평가**
-[참여도와 학습 자세를 3-5문장으로 작성]
-
-**3. 전체 Comment: 종합적 평가와 향후 방향**
-[오늘 수업에서 보인 모습과 이전 수업들과의 비교를 자연스럽게 연결하여 종합적으로 평가하고, 향후 방향을 제시 (4-6문장)]
-
-**중요**: 
-- 반드시 3개 섹션 모두 작성해야 함
-- 3번째 섹션 "학습 추세 분석"을 반드시 포함해야 함
-- 각 섹션은 별도 문단으로 작성하여 구분이 명확해야 함
-- 점수는 언급하지 말고, 학생의 행동과 태도를 집중하여 작성
-- 학생명은 반드시 실제 이름으로 표시 (S1001 같은 ID 사용 금지)
-- 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성"""
+            [첫 수업 특이사항]
+            {current_class_info.get("class_memo") if str(current_class_info.get("class_memo", "")).strip() else "특별한 특이사항 없음"}"""
+            
 
             else:
                 # 프롬프트 구성 (기존 데이터 참고 포함)
@@ -149,29 +135,66 @@ class FeedbackSystem:
 {changes_data['latest_data'].get('class_memo', 'N/A')}
 
 [이전 수업 기록 (참고용)]
-{past_summary}
+{past_summary}"""
 
-위 정보를 바탕으로 다음 3개 섹션으로 구성된 피드백을 작성해주세요:
-
-1. 수업보완: 부족한 부분과 개선 방향 (3-5문장)
-2. 수업태도: 참여도와 학습 자세 평가 (3-5문장)
-3. 전체 Comment: 다음 2파트로 구성
- - 1파트: 오늘 수업에서 보인 모습과 평가 (3-4문장)
- - 2파트: 이전 수업들과 비교한 학습 추세 분석 (3-4문장)
-
-**중요**: 
-- 전체 Comment의 2파트는 자연스럽게 연결되어야 함
-- 2파트에서는 구체적인 변화점과 추세를 언급
-- 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성"""
 
         except Exception as e:
             return f"프롬포트 생성 중 오류 발생: {e}"
         
         try:
             # AI 모델 호출
-            response = self.llm.invoke([("system", system_msg), ("user", user_msg)])
-            return response.content if hasattr(response, "content") else str(response)
+            user_msg_1 = user_msg + """
+            위 정보를 바탕으로 반드시 다음 피드백을 작성해주세요:
+
+            **1. 수업보완: 부족한 부분과 개선 방향**
+            [부족한 부분과 개선 방향을 3-5문장으로 작성]
+
+            **중요**: 
+            - 점수는 언급하지 말고, 학생의 행동과 태도를 집중하여 작성
+            - 학생명은 반드시 실제 이름으로 표시 (S1001 같은 ID 사용 금지)
+            - 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성
+            - 영역을 구분하지 않고 자연스럽게 작성"""
+            response_section1 = self.llm.invoke([("system", system_msg), ("user", user_msg_1)])
+            response_section1 = response_section1.content if hasattr(response_section1, "content") else str(response_section1)
         
+        except Exception as e:
+            return f"피드백 생성 중 오류 발생: {e}"
+        
+        try:
+            user_msg_2 = user_msg + """
+            위 정보를 바탕으로 반드시 다음 피드백을 작성해주세요:
+            
+            **2. 수업태도: 참여도와 학습 자세 평가**
+            [참여도와 학습 자세를 3-5문장으로 한 문단으로 작성]
+            
+            **중요**: 
+            - 점수는 언급하지 말고, 학생의 행동과 태도를 집중하여 작성
+            - 학생명은 반드시 실제 이름으로 표시 (S1001 같은 ID 사용 금지)
+            - 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성
+            - 영역을 구분하지 않고 자연스럽게 작성"""
+            response_section2 = self.llm.invoke([("system", system_msg), ("user", user_msg_2)])
+            response_section2 = response_section2.content if hasattr(response_section2, "content") else str(response_section2)
+
+        except Exception as e:
+            return f"피드백 생성 중 오류 발생: {e}"
+        try:
+            user_msg_3 = user_msg + """
+            위 정보를 바탕으로 반드시 다음 피드백을 작성해주세요:
+
+            **3. 전체 Comment: 종합적 평가와 향후 방향**
+            [오늘 수업에서 보인 모습과 이전 수업들과의 비교를 자연스럽게 연결하여 종합적으로 평가하고, 향후 방향을 제시 (4-6문장)]
+
+            **중요**: 
+            - 점수는 언급하지 말고, 학생의 행동과 태도를 집중하여 작성
+            - 학생명은 반드시 실제 이름으로 표시 (S1001 같은 ID 사용 금지)
+            - 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성
+            - 전체 Comment의 2파트는 자연스럽게 연결되어야 함
+            - 2파트에서는 구체적인 변화점과 추세를 언급
+            - 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성
+            """
+            response_section3 = self.llm.invoke([("system", system_msg), ("user", user_msg_3)])
+            response_section3 = response_section3.content if hasattr(response_section3, "content") else str(response_section3)
+            return response_section1 + "\n\n" + response_section2 + "\n\n" + response_section3
         except Exception as e:
             return f"피드백 생성 중 오류 발생: {e}"
 

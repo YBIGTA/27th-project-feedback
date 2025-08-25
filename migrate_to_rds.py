@@ -52,7 +52,7 @@ class Student(Base):
     classes = relationship("Class", back_populates="student", cascade="all, delete-orphan")
 
     # (선택) 동일 이름+학년 중복 방지를 위한 보조 유니크
-    __table_args__ = (UniqueConstraint("name", "grade", name="uq_students_name_grade"),)
+    #__table_args__ = (UniqueConstraint("name", "grade", name="uq_students_name_grade"),)
 
 
 class Class(Base):
@@ -68,8 +68,8 @@ class Class(Base):
     student = relationship("Student", back_populates="classes")
     feedbacks = relationship("Feedback", back_populates="clazz", cascade="all, delete-orphan")
 
-    # (선택) 한 학생의 동일 날짜/과목 수업 중복 방지
-    __table_args__ = (UniqueConstraint("student_id", "subject", "class_date", name="uq_classes_student_subject_date"),)
+    # 한 학생이 같은 날짜에 같은 과목을 여러 번 수강할 수 있음 (오전/오후, 1교시/2교시 등)
+    # 유니크 제약조건 없음
 
 
 class Feedback(Base):
@@ -88,7 +88,7 @@ class Feedback(Base):
     clazz = relationship("Class", back_populates="feedbacks")
 
     # (선택) 수업 1건당 피드백 1개 제약
-    __table_args__ = (UniqueConstraint("class_id", name="uq_feedbacks_class_id"),)
+    #__table_args__ = (UniqueConstraint("class_id", name="uq_feedbacks_class_id"),)
 # ------------------------------------------------
 
 
@@ -126,6 +126,17 @@ def _ensure_database_exists():
             ))
         else:
             print(f"✅ 데이터베이스 존재: {target_db}")
+            
+            # 기존 테이블이 있다면 삭제 (완전히 새로 시작)
+            print("🗑️  기존 테이블 정리 중...")
+            try:
+                conn.execute(text(f"USE `{target_db}`"))
+                conn.execute(text("DROP TABLE IF EXISTS feedbacks"))
+                conn.execute(text("DROP TABLE IF EXISTS classes"))
+                conn.execute(text("DROP TABLE IF EXISTS students"))
+                print("✅ 기존 테이블 삭제 완료")
+            except Exception as e:
+                print(f"⚠️  테이블 삭제 중 오류 (무시): {e}")
 
 
 def _get_engine_and_session():
@@ -208,18 +219,19 @@ def migrate(csv_path: str = CSV_PATH):
         # 학생 캐시
         for name, grade in session.query(Student.name, Student.grade).all():
             student_cache[(name, grade)] = session.query(Student.student_id).filter_by(name=name, grade=grade).first()[0]
-        # 수업 캐시
-        for sid, subject, cdate, cid in session.query(
-            Class.student_id, Class.subject, Class.class_date, Class.class_id
+        # 수업 캐시 (progress_text 포함)
+        for sid, subject, cdate, ptext, cid in session.query(
+            Class.student_id, Class.subject, Class.class_date, Class.progress_text, Class.class_id
         ).all():
-            class_cache[(sid, subject, cdate)] = cid
+            class_cache[(sid, subject, cdate, ptext)] = cid
 
         # 2) 행 단위 처리
         for i, row in df.iterrows():
             name = str(row["student_name"]).strip()
-            grade = int(row["grade"])
+            grade = parse_grade(row["grade"])
             subject = str(row["subject"]).strip()
             cdate = _parse_date(row["date"])
+            progress_text = str(row.get("progress_text", "")).strip()
 
             # --- 학생 upsert (name+grade 고유) ---
             skey = (name, grade)
@@ -237,21 +249,30 @@ def migrate(csv_path: str = CSV_PATH):
                     inserted_students += 1
                 student_cache[skey] = student_id
 
-            # --- 수업 upsert (student_id+subject+class_date 고유) ---
-            ckey = (student_id, subject, cdate)
+            # --- 수업 upsert (student_id+subject+class_date+progress_text 고유) ---
+            # 같은 날짜에 같은 과목을 여러 번 수강할 수 있음 (오전/오후, 1교시/2교시 등)
+            ckey = (student_id, subject, cdate, progress_text)
             class_id = class_cache.get(ckey)
             if class_id is None:
                 existing_cls = session.query(Class).filter_by(
-                    student_id=student_id, subject=subject, class_date=cdate
+                    student_id=student_id,
+                    subject=subject,
+                    class_date=cdate,
+                    progress_text=progress_text
                 ).first()
                 if existing_cls:
                     class_id = existing_cls.class_id
+                    # 기존 수업 정보 업데이트 (선택사항)
+                    if existing_cls.progress_text != progress_text:
+                        existing_cls.progress_text = progress_text
+                    if existing_cls.class_memo != row.get("class_memo", ""):
+                        existing_cls.class_memo = row.get("class_memo", "")
                 else:
                     cls = Class(
                         student_id=student_id,
                         subject=subject,
                         class_date=cdate,
-                        progress_text=row.get("progress_text", ""),
+                        progress_text=progress_text,
                         class_memo=row.get("class_memo", "")
                     )
                     session.add(cls)
@@ -269,21 +290,22 @@ def migrate(csv_path: str = CSV_PATH):
                     understanding_score=int(row["understanding_score"]) if not pd.isna(row["understanding_score"]) else None,
                     homework_score=int(row["homework_score"]) if not pd.isna(row["homework_score"]) else None,
                     qa_score=int(row["qa_score"]) if not pd.isna(row["qa_score"]) else None,
-                    ai_comment_improvement=row.get("수업보완", ""),
-                    ai_comment_attitude=row.get("수업태도", ""),
-                    ai_comment_overall=row.get("전체 comment", "")
+                    ai_comment_improvement=row.get("수업보완", "") if not pd.isna(row.get("수업보완", "")) else "",
+                    ai_comment_attitude=row.get("수업태도", "") if not pd.isna(row.get("수업태도", "")) else "",
+                    ai_comment_overall=row.get("전체수업 Comment", "") if not pd.isna(row.get("전체수업 Comment", "")) else ""
                 )
                 session.add(fb)
                 inserted_feedbacks += 1
             else:
+                print(f"피드백 갱신: class_id={class_id}")  # 디버깅용 로그
                 # 이미 있으면 갱신(원치 않으면 이 블록 제거)
                 fb.attitude_score = int(row["attitude_score"]) if not pd.isna(row["attitude_score"]) else fb.attitude_score
                 fb.understanding_score = int(row["understanding_score"]) if not pd.isna(row["understanding_score"]) else fb.understanding_score
                 fb.homework_score = int(row["homework_score"]) if not pd.isna(row["homework_score"]) else fb.homework_score
                 fb.qa_score = int(row["qa_score"]) if not pd.isna(row["qa_score"]) else fb.qa_score
-                fb.ai_comment_improvement = row.get("ai_comment_improvement", fb.ai_comment_improvement)
-                fb.ai_comment_attitude = row.get("ai_comment_attitude", fb.ai_comment_attitude)
-                fb.ai_comment_overall = row.get("ai_comment_overall", fb.ai_comment_overall)
+                fb.ai_comment_improvement = row.get("ai_comment_improvement", fb.ai_comment_improvement) if not pd.isna(row.get("ai_comment_improvement", "")) else fb.ai_comment_improvement
+                fb.ai_comment_attitude = row.get("ai_comment_attitude", fb.ai_comment_attitude) if not pd.isna(row.get("ai_comment_attitude", "")) else fb.ai_comment_attitude
+                fb.ai_comment_overall = row.get("ai_comment_overall", fb.ai_comment_overall) if not pd.isna(row.get("ai_comment_overall", "")) else fb.ai_comment_overall
 
             if (i + 1) % BATCH_SIZE == 0:
                 session.commit()
@@ -297,6 +319,23 @@ def migrate(csv_path: str = CSV_PATH):
         raise
     finally:
         session.close()
+
+
+def parse_grade(grade_str: str) -> int:
+    """'초1' → 1, '중1' → 7, '고1' → 10 등으로 변환"""
+    grade_str = str(grade_str).strip()
+    if grade_str.startswith("초"):
+        return int(grade_str[1:])
+    elif grade_str.startswith("중"):
+        return 6 + int(grade_str[1:])
+    elif grade_str.startswith("고"):
+        return 9 + int(grade_str[1:])
+    else:
+        # 숫자만 있거나 예외 처리
+        try:
+            return int(grade_str)
+        except Exception:
+            raise ValueError(f"학년 변환 실패: {grade_str}")
 
 
 def main():

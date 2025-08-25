@@ -165,7 +165,7 @@ class FeedbackSystem:
                         f"- {record.get('date', record.get('class_date'))}: 태도{record['attitude_score']}점, 이해도{record['understanding_score']}점, 과제{record['homework_score']}점, 질문{record['qa_score']}점"
                         f"\n  수업내용: {record.get('progress_text', 'N/A')}"
                         f"\n  특이사항: {record.get('class_memo', 'N/A')}"
-                        for record in all_records[-3:]  # 최근 3회 기록
+                        for record in all_records[-4:-1]  # 최근 3회 기록
                     ]
                 )
 
@@ -199,7 +199,6 @@ class FeedbackSystem:
  - 2파트: 이전 수업들과 비교한 학습 추세 분석 (3-4문장)
 금지: '1파트', '2파트' 같은 표현, 소제목, 번호, 불릿, 줄바꿈으로 파트 구분.
 문장 사이 연결어를 사용해 자연스럽게 서술할 것.
-
 
 
 **중요**: 

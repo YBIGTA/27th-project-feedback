@@ -245,7 +245,6 @@ class CSVDataProvider:
             # 날짜가 파싱되지 않은 행 제거
             self.df = self.df.dropna(subset=["date"])
             self.df = self.df.sort_values(["student_id", "date"])
-            print("df", self.df)
             print(
                 f"✅ 데이터 로드 완료: {len(self.df)}개 행, "
                 f"{self.df['student_id'].nunique()}명 학생"

@@ -6,7 +6,9 @@ from langchain_upstage import ChatUpstage
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
+
 load_dotenv()
+
 
 class FeedbackSystem:
     def __init__(self, model: str = "solar-pro2", temperature: float = 0.3):
@@ -16,7 +18,9 @@ class FeedbackSystem:
         self.llm = ChatUpstage(model=model, temperature=temperature, api_key=api_key)
         self.output_parser = StrOutputParser()
 
-    def calculate_score_changes(self, past_records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def calculate_score_changes(
+        self, past_records: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """전회차 대비 점수 변화 계산"""
         if len(past_records) < 2:
             return {"error": "비교를 위해 최소 2회 수업 데이터가 필요합니다."}
@@ -58,14 +62,12 @@ class FeedbackSystem:
 
         return {"changes": changes, "latest_data": latest, "previous_data": previous}
 
-
-
     def generate_feedback(
         self,
         student_info: Dict[str, Any],
         current_class_info: Dict[str, Any],
-        past_records: List[Dict[str, Any]]
-        ) -> str:
+        past_records: List[Dict[str, Any]],
+    ) -> str:
         """Upstage API를 사용하여 피드백 생성"""
         is_new = len(past_records) < 1
 
@@ -75,7 +77,6 @@ class FeedbackSystem:
                 system_msg += "신규 학생의 첫 수업 평가 데이터를 바탕으로 학부모님께 전달할 수 있는 전문적이고 따뜻한 피드백을 작성합니다."
             else:
                 system_msg += "교수자가 입력한 수업 평가 데이터와 학생의 이전 수업 기록을 참고하여 피드백을 담은 레포트를 제공해야합니다."
-            
 
             system_msg += """
             **중요**: 이 피드백은 학부모님께 전달되는 것이므로, 
@@ -105,7 +106,6 @@ class FeedbackSystem:
 
             [첫 수업 특이사항]
             {current_class_info.get("class_memo") if str(current_class_info.get("class_memo", "")).strip() else "특별한 특이사항 없음"}"""
-            
 
             else:
                 # 프롬프트 구성 (기존 데이터 참고 포함)
@@ -120,7 +120,7 @@ class FeedbackSystem:
                         f"\n  수업내용: {record.get('progress_text', 'N/A')}"
                         f"\n  특이사항: {record.get('class_memo', 'N/A')}"
                         for record in all_records[-4:-1]  # 최근 3회 기록
-                   ]
+                    ]
                 )
 
                 user_msg += f"""
@@ -144,10 +144,12 @@ class FeedbackSystem:
 
         except Exception as e:
             return f"프롬포트 생성 중 오류 발생: {e}"
-        
+
         try:
             # AI 모델 호출
-            user_msg_1 = user_msg + """
+            user_msg_1 = (
+                user_msg
+                + """
             위 정보를 바탕으로 반드시 다음 피드백을 작성해주세요:
 
             1. 수업보완: 부족한 부분과 개선 방향 (3-5문장)
@@ -156,38 +158,62 @@ class FeedbackSystem:
             - 점수는 언급하지 말고, 학생의 행동과 태도를 집중하여 작성
             - 학생명은 반드시 실제 이름으로 표시 (S1001 같은 ID 사용 금지)
             - 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성
-            - 영역을 구분하지 않고 자연스럽게 작성"""
-            response_section1 = self.llm.invoke([("system", system_msg), ("user", user_msg_1)])
-            response_section1 = response_section1.content if hasattr(response_section1, "content") else str(response_section1)
-        
+            - 영역을 구분하지 않고 한문단으로 자연스럽게 작성"""
+            )
+            response_section1 = self.llm.invoke(
+                [("system", system_msg), ("user", user_msg_1)]
+            )
+            response_section1 = (
+                response_section1.content
+                if hasattr(response_section1, "content")
+                else str(response_section1)
+            )
+
         except Exception as e:
             return f"피드백 생성 중 오류 발생: {e}"
-        
+
         try:
-            user_msg_2 = user_msg + """
+            user_msg_2 = (
+                user_msg
+                + """
             위 정보를 바탕으로 반드시 다음 피드백을 작성해주세요:
             
-            **2. 수업태도: 참여도와 학습 자세 평가**
+            2. 수업태도: 참여도와 학습 자세 평가
             [참여도와 학습 자세를 3-5문장으로 한 문단으로 작성]
             
             **중요**: 
             - 점수는 언급하지 말고, 학생의 행동과 태도를 집중하여 작성
             - 학생명은 반드시 실제 이름으로 표시 (S1001 같은 ID 사용 금지)
             - 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성
-            - 영역을 구분하지 않고 자연스럽게 작성"""
-            response_section2 = self.llm.invoke([("system", system_msg), ("user", user_msg_2)])
-            response_section2 = response_section2.content if hasattr(response_section2, "content") else str(response_section2)
+            - 영역을 구분하지 않고 한문단으로 자연스럽게 작성"""
+            )
+            response_section2 = self.llm.invoke(
+                [("system", system_msg), ("user", user_msg_2)]
+            )
+            response_section2 = (
+                response_section2.content
+                if hasattr(response_section2, "content")
+                else str(response_section2)
+            )
 
         except Exception as e:
             return f"피드백 생성 중 오류 발생: {e}"
         try:
-            user_msg_3 = user_msg + """
+            user_msg_3 = (
+                user_msg
+                + """
             위 정보를 바탕으로 반드시 다음 피드백을 작성해주세요:
 
             3. 전체 Comment: 종합적 평가와 향후 방향
-            [오늘 수업에서 보인 모습을 종합적으로 평가하고, 향후 방향을 제시 (4-6문장)]
+            
+            1파트: 오늘 수업에서 보인 모습과 평가 (3-4문장)
+            2파트: 이전 수업들과 비교한 학습 추세 분석 (3-4문장)
 
+            
             **중요**: 
+            - 금지: '1파트', '2파트' 같은 표현, 소제목, 번호, 불릿, 줄바꿈으로 파트 구분.
+            - 반드시 1파트,2파트를 한문단으로 줄바꿈 없이 작성.
+            - 문장 사이 연결어를 사용해 자연스럽게 서술할 것.
             - 점수는 언급하지 말고, 학생의 행동과 태도를 집중하여 작성
             - 학생명은 반드시 실제 이름으로 표시 (S1001 같은 ID 사용 금지)
             - 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성
@@ -195,11 +221,25 @@ class FeedbackSystem:
             - 2파트에서는 구체적인 변화점과 추세를 언급
             - 학부모님이 학생의 학습 상황을 종합적으로 파악할 수 있도록 작성
             """
-            response_section3 = self.llm.invoke([("system", system_msg), ("user", user_msg_3)])
-            response_section3 = response_section3.content if hasattr(response_section3, "content") else str(response_section3)
-            return response_section1 + "|||SECTION_SEPARATOR|||" + response_section2 + "|||SECTION_SEPARATOR|||" + response_section3
+            )
+            response_section3 = self.llm.invoke(
+                [("system", system_msg), ("user", user_msg_3)]
+            )
+            response_section3 = (
+                response_section3.content
+                if hasattr(response_section3, "content")
+                else str(response_section3)
+            )
+            return (
+                response_section1
+                + "|||SECTION_SEPARATOR|||"
+                + response_section2
+                + "|||SECTION_SEPARATOR|||"
+                + response_section3
+            )
         except Exception as e:
             return f"피드백 생성 중 오류 발생: {e}"
+
 
 # CSV 데이터 어댑터 및 실행기
 class CSVDataProvider:
@@ -207,6 +247,7 @@ class CSVDataProvider:
     CSV 파일을 읽고 Pandas로 전처리한 뒤,
     FeedbackAnalyzer가 사용할 수 있는 표준 형식(딕셔너리)으로 변환합니다.
     """
+
     def __init__(self, csv_path: str = "data/math_feedback.csv"):
         self.csv_path = csv_path
         self.df = None
@@ -228,7 +269,7 @@ class CSVDataProvider:
         except Exception as e:
             print(f"❌ 데이터 로드 실패: {e}")
             self.df = None
-            
+
     def get_student_list(self) -> List[str]:
         """학생 ID 목록 반환"""
         if self.df is None:
@@ -238,18 +279,22 @@ class CSVDataProvider:
     def get_student_data(self, student_id: str) -> (Dict, Dict, List[Dict]):
         if self.df is None:
             return None, None, None
-            
+
         student_df = self.df[self.df["student_id"] == student_id].sort_values("date")
         if student_df.empty:
             raise ValueError(f"학생 ID '{student_id}'를 CSV에서 찾을 수 없습니다.")
 
-        all_records = student_df.to_dict('records')
-        
-        student_info = {"name": all_records[-1]['student_name'], "grade": all_records[-1]['grade']}
+        all_records = student_df.to_dict("records")
+
+        student_info = {
+            "name": all_records[-1]["student_name"],
+            "grade": all_records[-1]["grade"],
+        }
         current_class_info = all_records[-1]
         past_records = all_records[:-1]
-        
+
         return student_info, current_class_info, past_records
+
 
 # 테스트 실행
 if __name__ == "__main__":
@@ -269,11 +314,13 @@ if __name__ == "__main__":
             print(f"\n🔍 학생 {test_student_id} 분석 중...")
 
             # CSV에서 표준 형식으로 데이터 변환
-            student_info, current_class, past_records = provider.get_student_data(test_student_id)
+            student_info, current_class, past_records = provider.get_student_data(
+                test_student_id
+            )
 
             # 피드백 생성 클래스 초기화
             analyzer = FeedbackSystem()
-            
+
             # 점수 변화 계산 및 출력
             all_records = past_records + [current_class]
             if len(all_records) >= 2:
@@ -293,11 +340,13 @@ if __name__ == "__main__":
                         )
                 else:
                     print(f"❌ 오류: {changes['error']}")
-                
+
             # 피드백 생성
             print(f"\n📝 피드백 생성 중...")
-            feedback_result = analyzer.generate_feedback(student_info, current_class, past_records)
-            
+            feedback_result = analyzer.generate_feedback(
+                student_info, current_class, past_records
+            )
+
             # 5. 결과 출력
             print("\n--- AI 생성 피드백 ---")
             print(f"\n{feedback_result}")

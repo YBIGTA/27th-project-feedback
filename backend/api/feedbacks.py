@@ -41,9 +41,11 @@ def create_feedback_for_student(
         ai_comments = generate_ai_feedback(
             student_id=student_id,
             db=db,
+            teacher_id=current_teacher.teacher_id,
             current_class_info=request.class_info.dict(),
             current_scores=request.feedback_info.dict()
         )
+        print(ai_comments)
 
         # 성공 시 AI 코멘트 업데이트
         crud.update_feedback_with_ai_comment(

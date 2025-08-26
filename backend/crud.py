@@ -170,3 +170,7 @@ def update_feedback(db: Session, feedback_id: int, feedback_update: schemas.Feed
         db.commit()
         db.refresh(db_feedback)
     return db_feedback
+
+def get_grade(db: Session, grade_id: int):
+    """ID로 특정 학년 정보를 조회"""
+    return db.query(models.Grade).filter(models.Grade.grade_id == grade_id).first()

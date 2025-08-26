@@ -264,7 +264,6 @@ def show_feedback_management():
                         if c.get('feedback') and c['feedback']['feedback_id'] == fb['feedback_id']:
                             class_date_str = c['class_date']
                             break
-            
             with st.expander(f"{class_date_str} 수업 피드백"):
                 st.markdown(f"**👍 발전한 점**")
                 st.info(fb.get('ai_comment_improvement') or "내용 없음")

@@ -8,7 +8,7 @@ from .initial_data import init_db
 models.Base.metadata.create_all(bind=engine)
 init_db()
 
-from .api import students, feedbacks, feedback_details, auth, grades
+from .api import students, feedbacks, feedback_details, auth, grades, teachers
 
 app = FastAPI()
 
@@ -34,6 +34,7 @@ app.include_router(grades.router)
 app.include_router(students.router)
 app.include_router(feedbacks.router)
 app.include_router(feedback_details.router)
+app.include_router(teachers.router)
 
 @app.get("/")
 def read_root():
